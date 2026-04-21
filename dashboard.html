@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — Ashitha & Ben</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',sans-serif;background:#0f0e0d;color:#e8e0d5;min-height:100vh}
+
+  /* LOGIN */
+  #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0f0e0d}
+  .login-box{background:#1a1613;border:1px solid #3a2e28;border-radius:16px;padding:40px 32px;width:320px;text-align:center}
+  .login-box h1{font-family:Georgia,serif;font-size:22px;color:#c9a96e;margin-bottom:6px;letter-spacing:.05em}
+  .login-box p{font-size:12px;color:#7a6e65;margin-bottom:28px}
+  .login-box input{width:100%;padding:12px 16px;border:1px solid #3a2e28;border-radius:8px;background:#0f0e0d;color:#e8e0d5;font-size:15px;outline:none;margin-bottom:14px;letter-spacing:.1em}
+  .login-box button{width:100%;padding:12px;background:#c9a96e;color:#0f0e0d;border:none;border-radius:8px;font-size:13px;font-weight:700;letter-spacing:.15em;cursor:pointer}
+  .login-box button:hover{background:#b8954f}
+  .login-err{color:#e07070;font-size:12px;margin-top:10px;display:none}
+
+  /* DASHBOARD */
+  #dashboard{display:none}
+  .top-bar{background:#1a1613;border-bottom:1px solid #2a2420;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+  .top-bar h1{font-family:Georgia,serif;font-size:20px;color:#c9a96e;letter-spacing:.05em}
+  .top-bar .logout{background:none;border:1px solid #3a2e28;color:#7a6e65;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px}
+  .top-bar .logout:hover{color:#c9a96e;border-color:#c9a96e}
+
+  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;padding:24px}
+  .stat-card{background:#1a1613;border:1px solid #2a2420;border-radius:12px;padding:20px;text-align:center}
+  .stat-card .num{font-size:36px;font-weight:700;color:#c9a96e;line-height:1}
+  .stat-card .lbl{font-size:11px;color:#7a6e65;margin-top:6px;letter-spacing:.08em;text-transform:uppercase}
+
+  .section{padding:0 24px 24px}
+  .section h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#7a6e65;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #2a2420}
+
+  /* Copy URL tool */
+  .url-tool{background:#1a1613;border:1px solid #2a2420;border-radius:12px;padding:20px;margin-bottom:24px}
+  .url-tool label{font-size:12px;color:#7a6e65;display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em}
+  .url-row{display:flex;gap:8px;margin-bottom:10px}
+  .url-row input{flex:1;padding:10px 14px;background:#0f0e0d;border:1px solid #3a2e28;border-radius:8px;color:#e8e0d5;font-size:13px;outline:none}
+  .url-row button{padding:10px 16px;background:#c9a96e;color:#0f0e0d;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .url-row button:hover{background:#b8954f}
+  .url-preview{font-size:11px;color:#a09080;word-break:break-all;min-height:16px}
+
+  /* RSVP table */
+  .rsvp-table-wrap{overflow-x:auto;border-radius:12px;border:1px solid #2a2420}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{background:#1a1613;padding:12px 14px;text-align:left;font-size:11px;letter-spacing:.08em;color:#7a6e65;text-transform:uppercase;white-space:nowrap}
+  tbody tr{border-top:1px solid #1e1a17}
+  tbody tr:hover{background:#1a1613}
+  tbody td{padding:11px 14px;color:#d0c8bf;vertical-align:top}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge.yes{background:#1a3320;color:#6fc98a}
+  .badge.no{background:#33201a;color:#e07070}
+  .empty-msg{text-align:center;padding:40px;color:#5a524a;font-size:14px}
+  .refresh-btn{background:none;border:1px solid #3a2e28;color:#7a6e65;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;margin-left:12px}
+  .refresh-btn:hover{color:#c9a96e;border-color:#c9a96e}
+  .section-header{display:flex;align-items:center;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #2a2420}
+  .section-header h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#7a6e65;flex:1}
+  .export-btn{background:#c9a96e;color:#0f0e0d;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;margin-left:8px}
+  .export-btn:hover{background:#b8954f}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>Ashitha &amp; Ben</h1>
+    <p>Wedding Dashboard · DigiWed</p>
+    <input type="password" id="pwdInput" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">ENTER</button>
+    <div class="login-err" id="loginErr">Incorrect password</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="top-bar">
+    <h1>Ashitha &amp; Ben · Dashboard</h1>
+    <button class="logout" onclick="doLogout()">Logout</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="num" id="statTotal">—</div><div class="lbl">Total RSVPs</div></div>
+    <div class="stat-card"><div class="num" id="statAttending">—</div><div class="lbl">Attending</div></div>
+    <div class="stat-card"><div class="num" id="statDeclined">—</div><div class="lbl">Declined</div></div>
+    <div class="stat-card"><div class="num" id="statGuests">—</div><div class="lbl">Total Guests</div></div>
+  </div>
+
+  <!-- URL Generator -->
+  <div class="section">
+    <div class="url-tool">
+      <label>Generate Guest Invitation Link</label>
+      <div class="url-row">
+        <input type="text" id="guestNameInput" placeholder="Guest name e.g. Rahul Mathew">
+        <button onclick="generateURL()">Generate</button>
+      </div>
+      <div class="url-preview" id="urlPreview"></div>
+    </div>
+  </div>
+
+  <!-- RSVP List -->
+  <div class="section">
+    <div class="section-header">
+      <h2>RSVP Responses</h2>
+      <button class="refresh-btn" onclick="loadRSVP()">↻ Refresh</button>
+      <button class="export-btn" onclick="exportCSV()">Export CSV</button>
+    </div>
+    <div class="rsvp-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Attending</th>
+            <th>Guests</th>
+            <th>Meal</th>
+            <th>Dietary</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="rsvpBody">
+          <tr><td colspan="7" class="empty-msg">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const PASSWORD = 'ashithaben2026';
+  const BASE_URL = 'https://murshid161-sketch.github.io/Ashithawedzben/';
+  const RSVP_PATH = 'ashitha-ben-v2/rsvp';
+
+  const firebaseConfig = {
+    apiKey:"AIzaSy841fvxVl1KeHOro6WKJ72o22izuCpJ-b4",
+    authDomain:"yaseen-jumana-wedding.firebaseapp.com",
+    databaseURL:"https://yaseen-jumana-wedding-default-rtdb.firebaseio.com",
+    projectId:"yaseen-jumana-wedding",
+    storageBucket:"yaseen-jumana-wedding.firebasestorage.app",
+    messagingSenderId:"355557621111",
+    appId:"1:355557621111:web:d0b78c34bfe5a53b69f572"
+  };
+
+  let db = null;
+  let rsvpData = [];
+
+  function doLogin() {
+    const val = document.getElementById('pwdInput').value;
+    if(val === PASSWORD) {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      initFirebase();
+    } else {
+      document.getElementById('loginErr').style.display = 'block';
+    }
+  }
+
+  function doLogout() {
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('pwdInput').value = '';
+    document.getElementById('loginErr').style.display = 'none';
+  }
+
+  function initFirebase() {
+    try {
+      if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+      loadRSVP();
+    } catch(e) { console.warn('Firebase error:', e); }
+  }
+
+  function loadRSVP() {
+    if(!db) return;
+    const tbody = document.getElementById('rsvpBody');
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">Loading…</td></tr>';
+    db.ref(RSVP_PATH).orderByChild('ts').once('value', snap => {
+      rsvpData = [];
+      snap.forEach(child => rsvpData.push(child.val()));
+      rsvpData.reverse();
+      renderRSVP();
+    });
+  }
+
+  function renderRSVP() {
+    const tbody = document.getElementById('rsvpBody');
+    if(!rsvpData.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">No RSVPs yet</td></tr>';
+      updateStats([]);
+      return;
+    }
+    updateStats(rsvpData);
+    tbody.innerHTML = rsvpData.map((r, i) => `
+      <tr>
+        <td style="color:#5a524a">${i+1}</td>
+        <td><strong>${esc(r.name||'—')}</strong></td>
+        <td><span class="badge ${r.attending?'yes':'no'}">${r.attending?'Yes':'No'}</span></td>
+        <td>${r.attending ? (r.members||1) : '—'}</td>
+        <td>${esc(r.mealPref||'—')}</td>
+        <td>${esc(r.dietary||'None')}</td>
+        <td style="font-size:11px;color:#7a6e65">${esc(r.time||'—')}</td>
+      </tr>
+    `).join('');
+  }
+
+  function updateStats(data) {
+    const attending = data.filter(r => r.attending);
+    const declined = data.filter(r => !r.attending);
+    const totalGuests = attending.reduce((sum, r) => sum + (parseInt(r.members)||1), 0);
+    document.getElementById('statTotal').textContent = data.length;
+    document.getElementById('statAttending').textContent = attending.length;
+    document.getElementById('statDeclined').textContent = declined.length;
+    document.getElementById('statGuests').textContent = totalGuests;
+  }
+
+  function generateURL() {
+    const name = document.getElementById('guestNameInput').value.trim();
+    const preview = document.getElementById('urlPreview');
+    if(!name) { preview.textContent = 'Enter a guest name above'; return; }
+    const url = BASE_URL + '?guest=' + encodeURIComponent(name);
+    preview.innerHTML = `<a href="${url}" target="_blank" style="color:#c9a96e">${url}</a> <span style="cursor:pointer;color:#7a6e65;margin-left:8px" onclick="copyURL('${url}')">📋 Copy</span>`;
+  }
+
+  function copyURL(url) {
+    navigator.clipboard.writeText(url).then(() => {
+      document.getElementById('urlPreview').innerHTML += ' <span style="color:#6fc98a">✓ Copied!</span>';
+    });
+  }
+
+  function exportCSV() {
+    if(!rsvpData.length) return alert('No data to export');
+    const header = ['Name','Attending','Guests','Meal Preference','Dietary','Time'];
+    const rows = rsvpData.map(r => [
+      r.name, r.attending?'Yes':'No', r.attending?(r.members||1):'', r.mealPref||'', r.dietary||'', r.time||''
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+    const csv = [header.join(','), ...rows].join('\n');
+    const a = document.createElement('a');
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.download = 'ashitha-ben-rsvp.csv';
+    a.click();
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
