@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — Ashitha & Ben</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Cinzel:wght@400;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+  /* ─── RESET ─────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Jost', sans-serif; background: #f4f0e8; color: #1a1a1a; min-height: 100vh; }
+
+  /* ─── LOGIN ─────────────────────────────── */
+  #loginScreen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; background: #0d1208;
+  }
+  .login-box {
+    background: #141e0f; border: 1px solid #2d3d26;
+    border-radius: 20px; padding: 44px 36px; width: 340px; text-align: center;
+  }
+  .login-couple {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic; font-size: 26px; color: #c9a96e;
+    margin-bottom: 4px; letter-spacing: .02em;
+  }
+  .login-sub {
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: .18em; color: #4a6040; margin-bottom: 32px;
+  }
+  .login-box input {
+    width: 100%; padding: 13px 16px;
+    border: 1px solid #2d3d26; border-radius: 10px;
+    background: #0d1208; color: #e8e0d5; font-family: 'Jost', sans-serif;
+    font-size: 15px; outline: none; margin-bottom: 14px;
+    letter-spacing: .08em;
+  }
+  .login-box input::placeholder { color: #3a4e32; }
+  .login-box input:focus { border-color: #c9a96e; }
+  .login-box button {
+    width: 100%; padding: 13px;
+    background: #c9a96e; color: #0d1208;
+    border: none; border-radius: 10px;
+    font-family: 'Cinzel', serif; font-size: 12px;
+    font-weight: 600; letter-spacing: .2em; cursor: pointer;
+    transition: background .2s;
+  }
+  .login-box button:hover { background: #b8954f; }
+  .login-err { color: #e07070; font-size: 12px; margin-top: 12px; display: none; }
+
+  /* ─── DASHBOARD WRAPPER ──────────────────── */
+  #dashboard { display: none; min-height: 100vh; }
+
+  /* ─── TOP BAR ────────────────────────────── */
+  .top-bar {
+    background: #0d1208;
+    padding: 18px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .top-bar-left { display: flex; align-items: center; gap: 10px; }
+  .live-dot {
+    width: 10px; height: 10px; border-radius: 50%; background: #c9a96e;
+    box-shadow: 0 0 0 3px rgba(201,169,110,.15);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(201,169,110,.15); }
+    50% { box-shadow: 0 0 0 6px rgba(201,169,110,.05); }
+  }
+  .top-bar-title { line-height: 1.2; }
+  .top-bar-couple {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic; font-size: 20px; color: #e8dcc8;
+    letter-spacing: .02em;
+  }
+  .top-bar-label {
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: .2em; color: #c9a96e; text-transform: uppercase;
+  }
+  .logout-btn {
+    background: none; border: 1px solid #2d3d26;
+    color: #6a8a60; padding: 8px 18px; border-radius: 8px;
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: .12em; cursor: pointer;
+    transition: all .2s;
+  }
+  .logout-btn:hover { border-color: #c9a96e; color: #c9a96e; }
+
+  /* ─── CONTENT ────────────────────────────── */
+  .content { padding: 24px 18px; }
+
+  /* ─── STATS GRID ─────────────────────────── */
+  .stats-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 14px; margin-bottom: 20px;
+  }
+  .stat-card {
+    background: #fff; border-radius: 16px;
+    padding: 22px 20px; border: 1px solid rgba(0,0,0,.06);
+    box-shadow: 0 2px 12px rgba(0,0,0,.04);
+  }
+  .stat-label {
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: .14em; color: #8a8278;
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .stat-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 48px; font-weight: 600; color: #0d1208;
+    line-height: 1;
+  }
+  .stat-num .stat-unit {
+    font-size: 16px; color: #a09080; margin-left: 4px;
+    font-style: italic; font-weight: 400;
+  }
+
+  /* ─── INVITE CARD ────────────────────────── */
+  .invite-card {
+    background: #fff; border-radius: 16px;
+    padding: 24px 20px; margin-bottom: 20px;
+    border: 1px solid rgba(0,0,0,.06);
+    box-shadow: 0 2px 12px rgba(0,0,0,.04);
+  }
+  .invite-heading {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic; font-size: 24px; color: #0d1208;
+    margin-bottom: 6px;
+  }
+  .invite-sub {
+    font-size: 13px; color: #9a928a; margin-bottom: 18px;
+    line-height: 1.4;
+  }
+  .name-input {
+    width: 100%; padding: 13px 16px;
+    border: 1px solid #e0dbd2; border-radius: 10px;
+    background: #faf8f4; color: #1a1a1a;
+    font-family: 'Jost', sans-serif; font-size: 14px;
+    outline: none; margin-bottom: 12px;
+    transition: border-color .2s;
+  }
+  .name-input::placeholder { color: #bab2a8; }
+  .name-input:focus { border-color: #c9a96e; }
+  .url-display {
+    width: 100%;
+    background: #f5f1ea; border: 1px solid #e0dbd2;
+    border-radius: 10px; padding: 13px 16px;
+    font-size: 12px; color: #6a6258;
+    font-family: monospace; word-break: break-all;
+    margin-bottom: 14px; min-height: 48px;
+    line-height: 1.5;
+  }
+  .action-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-copy {
+    padding: 14px 10px;
+    background: #0d1208; color: #e8dcc8;
+    border: none; border-radius: 10px;
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: .14em; cursor: pointer;
+    transition: background .2s;
+  }
+  .btn-copy:hover { background: #1a2e14; }
+  .btn-copy.copied { background: #1a3d14; }
+  .btn-wa {
+    padding: 14px 10px;
+    background: #25d366; color: #fff;
+    border: none; border-radius: 10px;
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: .12em; cursor: pointer;
+    transition: background .2s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-wa:hover { background: #1db954; }
+  .btn-wa svg { flex-shrink: 0; }
+
+  /* ─── FILTER PILLS ───────────────────────── */
+  .filter-section { margin-bottom: 16px; }
+  .filter-label {
+    font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: .16em; color: #8a8278;
+    text-transform: uppercase; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .filter-note { font-size: 9px; color: #b0a898; font-family: 'Jost', sans-serif; letter-spacing: 0; }
+  .filter-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill {
+    padding: 8px 16px; border-radius: 40px;
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: .1em; cursor: pointer;
+    border: 1.5px solid #ccc7be; color: #6a6258; background: #fff;
+    transition: all .2s; text-transform: uppercase;
+  }
+  .pill.active {
+    background: #0d1208; border-color: #0d1208; color: #e8dcc8;
+  }
+  .pill:hover:not(.active) { border-color: #9a8a7a; color: #3a3028; }
+
+  /* ─── RSVP TABLE ─────────────────────────── */
+  .rsvp-table-wrap {
+    background: #fff; border-radius: 16px;
+    border: 1px solid rgba(0,0,0,.06);
+    overflow: hidden; margin-bottom: 90px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.04);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: #faf8f4; padding: 12px 14px; text-align: left;
+    font-family: 'Cinzel', serif; font-size: 8px;
+    letter-spacing: .12em; color: #8a8278; text-transform: uppercase;
+    white-space: nowrap; border-bottom: 1px solid #ede9e2;
+  }
+  tbody tr { border-top: 1px solid #f0ece6; }
+  tbody tr:hover { background: #faf8f4; }
+  tbody td { padding: 13px 14px; color: #3a3028; vertical-align: middle; }
+  .badge {
+    display: inline-block; padding: 3px 10px;
+    border-radius: 20px; font-size: 11px; font-weight: 500;
+    font-family: 'Jost', sans-serif;
+  }
+  .badge.yes { background: #e8f5ec; color: #2a7a40; }
+  .badge.no  { background: #fceaea; color: #b04040; }
+  .empty-msg { text-align: center; padding: 48px; color: #a09080; font-size: 14px; }
+
+  /* ─── BOTTOM BAR ─────────────────────────── */
+  .bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #0d1208;
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid #1e2e16;
+  }
+  .showing-label {
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: .14em; color: #4a6a40;
+  }
+  .export-btn {
+    background: #c9a96e; color: #0d1208;
+    border: none; padding: 10px 20px; border-radius: 8px;
+    font-family: 'Cinzel', serif; font-size: 10px;
+    letter-spacing: .14em; cursor: pointer;
+    transition: background .2s; font-weight: 600;
+  }
+  .export-btn:hover { background: #b8954f; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LOGIN ════════════════════ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-couple">Ashitha &amp; Ben</div>
+    <div class="login-sub">RSVP Dashboard · DigiWed</div>
+    <input type="password" id="pwdInput" placeholder="Enter password"
+           onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">ENTER</button>
+    <div class="login-err" id="loginErr">Incorrect password. Try again.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ DASHBOARD ════════════════ -->
+<div id="dashboard">
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <div class="live-dot"></div>
+      <div class="top-bar-title">
+        <div class="top-bar-couple">Ashitha &amp; Ben</div>
+        <div class="top-bar-label">RSVP Dashboard</div>
+      </div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">LOG OUT</button>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total RSVPs</div>
+        <div class="stat-num" id="statTotal">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Attending</div>
+        <div class="stat-num" id="statAttending">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Not Attending</div>
+        <div class="stat-num" id="statDeclined">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Peak Event Attendance</div>
+        <div class="stat-num" id="statGuests">—<span class="stat-unit">peak</span></div>
+      </div>
+    </div>
+
+    <!-- Personalised Invite Generator -->
+    <div class="invite-card">
+      <div class="invite-heading">Create personalised invitation</div>
+      <div class="invite-sub">Enter a guest's name to generate a link with their name pre-filled.</div>
+      <input type="text" class="name-input" id="guestNameInput"
+             placeholder="e.g., John Mathew"
+             oninput="onNameInput()">
+      <div class="url-display" id="urlDisplay">https://murshid161-sketch.github.io/Ashithawedzben/</div>
+      <div class="action-btns">
+        <button class="btn-copy" id="copyBtn" onclick="copyLink()">COPY LINK</button>
+        <button class="btn-wa" onclick="shareWhatsApp()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+          </svg>
+          SHARE ON WHATSAPP
+        </button>
+      </div>
+    </div>
+
+    <!-- Event Filter -->
+    <div class="filter-section">
+      <div class="filter-label">
+        Filter by Event
+        <span class="filter-note">(numbers = total guests expected)</span>
+      </div>
+      <div class="filter-pills" id="filterPills"></div>
+    </div>
+
+    <!-- RSVP Table -->
+    <div class="rsvp-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Attending</th>
+            <th>Guests</th>
+            <th>Meal</th>
+            <th>Dietary</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="rsvpBody">
+          <tr><td colspan="7" class="empty-msg">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- Bottom Bar -->
+  <div class="bottom-bar">
+    <div class="showing-label" id="showingLabel">SHOWING — OF —</div>
+    <button class="export-btn" onclick="exportCSV()">↓ EXPORT CSV</button>
+  </div>
+
+</div><!-- /dashboard -->
+
+<script>
+/* ═══════════════════════════════════════════
+   ⚙️  CLIENT CONFIG — edit per client
+═══════════════════════════════════════════ */
+const CONFIG = {
+  password    : 'ashithaben2026',
+  coupleName  : 'Ashitha & Ben',
+  baseURL     : 'https://murshid161-sketch.github.io/Ashithawedzben/',
+  rsvpPath    : 'ashitha-ben-v2/rsvp',
+  exportFile  : 'ashitha-ben-rsvp.csv',
+
+  // WhatsApp message template
+  // Use {name} for guest name, {link} for personalised link
+  whatsappMessage: (name, link) => `Dear ${name},
+
+With great joy, we invite you to join our son's post-wedding reception.
+
+✨ Please view your personal invitation here: ${link}
+
+With love,
+Solly & Elias`,
+
+  // Events for filter pills — name shown, expected = expected guest count
+  // Set expected: null to hide the count
+  events: [
+    { key: 'all',          label: 'All',          expected: null },
+    { key: 'Madhuramveppu', label: 'Madhuramveppu', expected: 6  },
+    { key: 'Ceremony',      label: 'Ceremony',      expected: 6  },
+  ]
+};
+
+/* ═══════════════════════════════════════════
+   Firebase
+═══════════════════════════════════════════ */
+const firebaseConfig = {
+  apiKey          : "AIzaSy841fvxVl1KeHOro6WKJ72o22izuCpJ-b4",
+  authDomain      : "yaseen-jumana-wedding.firebaseapp.com",
+  databaseURL     : "https://yaseen-jumana-wedding-default-rtdb.firebaseio.com",
+  projectId       : "yaseen-jumana-wedding",
+  storageBucket   : "yaseen-jumana-wedding.firebasestorage.app",
+  messagingSenderId: "355557621111",
+  appId           : "1:355557621111:web:d0b78c34bfe5a53b69f572"
+};
+
+let db = null;
+let allRsvpData = [];
+let activeFilter = 'all';
+
+/* ─── AUTH ──────────────────────────────── */
+function doLogin() {
+  const val = document.getElementById('pwdInput').value;
+  if (val === CONFIG.password) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').style.display   = 'block';
+    initFirebase();
+    buildFilterPills();
+  } else {
+    document.getElementById('loginErr').style.display = 'block';
+    document.getElementById('pwdInput').select();
+  }
+}
+function doLogout() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('dashboard').style.display   = 'none';
+  document.getElementById('pwdInput').value = '';
+  document.getElementById('loginErr').style.display = 'none';
+}
+
+/* ─── FIREBASE ──────────────────────────── */
+function initFirebase() {
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    loadRSVP();
+  } catch(e) { console.warn('Firebase error:', e); }
+}
+
+function loadRSVP() {
+  if (!db) return;
+  document.getElementById('rsvpBody').innerHTML =
+    '<tr><td colspan="7" class="empty-msg">Loading…</td></tr>';
+  db.ref(CONFIG.rsvpPath).orderByChild('ts').once('value', snap => {
+    allRsvpData = [];
+    snap.forEach(child => allRsvpData.push(child.val()));
+    allRsvpData.reverse();
+    renderFiltered();
+  });
+}
+
+/* ─── FILTER ────────────────────────────── */
+function buildFilterPills() {
+  const container = document.getElementById('filterPills');
+  container.innerHTML = CONFIG.events.map(ev => {
+    const label = ev.expected != null ? `${ev.label} ${ev.expected}` : `${ev.label}`;
+    const active = ev.key === 'all' ? 'active' : '';
+    return `<button class="pill ${active}" data-key="${ev.key}" onclick="setFilter('${ev.key}')">${label.toUpperCase()}</button>`;
+  }).join('');
+}
+
+function setFilter(key) {
+  activeFilter = key;
+  document.querySelectorAll('.pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.key === key);
+  });
+  renderFiltered();
+}
+
+function renderFiltered() {
+  const filtered = activeFilter === 'all'
+    ? allRsvpData
+    : allRsvpData.filter(r => (r.event || '').toLowerCase() === activeFilter.toLowerCase());
+  updateStats(filtered);
+  renderTable(filtered);
+  const showing = filtered.length;
+  const total   = allRsvpData.length;
+  document.getElementById('showingLabel').textContent =
+    `SHOWING ${showing} OF ${total}`;
+}
+
+/* ─── STATS ─────────────────────────────── */
+function updateStats(data) {
+  const attending = data.filter(r => r.attending);
+  const declined  = data.filter(r => !r.attending);
+  const peak      = attending.reduce((s, r) => s + (parseInt(r.members) || 1), 0);
+  document.getElementById('statTotal').textContent     = data.length;
+  document.getElementById('statAttending').textContent = attending.length;
+  document.getElementById('statDeclined').textContent  = declined.length;
+  // Peak: rebuild to keep the <span class="stat-unit"> inside
+  document.getElementById('statGuests').innerHTML =
+    peak + '<span class="stat-unit"> peak</span>';
+}
+
+/* ─── TABLE ─────────────────────────────── */
+function renderTable(data) {
+  const tbody = document.getElementById('rsvpBody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">No RSVPs yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map((r, i) => `
+    <tr>
+      <td style="color:#b0a898;font-size:12px">${i + 1}</td>
+      <td><strong style="font-weight:500">${esc(r.name || '—')}</strong></td>
+      <td><span class="badge ${r.attending ? 'yes' : 'no'}">${r.attending ? 'Yes' : 'No'}</span></td>
+      <td style="color:#6a6258">${r.attending ? (r.members || 1) : '—'}</td>
+      <td style="color:#6a6258">${esc(r.mealPref || '—')}</td>
+      <td style="color:#6a6258">${esc(r.dietary || 'None')}</td>
+      <td style="font-size:11px;color:#a09080">${esc(r.time || '—')}</td>
+    </tr>
+  `).join('');
+}
+
+/* ─── URL GENERATOR ─────────────────────── */
+function getCurrentURL() {
+  const name = document.getElementById('guestNameInput').value.trim();
+  if (!name) return CONFIG.baseURL;
+  return CONFIG.baseURL + '?guest=' + encodeURIComponent(name);
+}
+
+function onNameInput() {
+  document.getElementById('urlDisplay').textContent = getCurrentURL();
+  // Reset copy button
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = 'COPY LINK';
+  btn.classList.remove('copied');
+}
+
+function copyLink() {
+  const url = getCurrentURL();
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ COPIED';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'COPY LINK';
+      btn.classList.remove('copied');
+    }, 2500);
+  });
+}
+
+function shareWhatsApp() {
+  const name = document.getElementById('guestNameInput').value.trim();
+  if (!name) {
+    document.getElementById('guestNameInput').focus();
+    document.getElementById('guestNameInput').style.borderColor = '#e07070';
+    setTimeout(() => document.getElementById('guestNameInput').style.borderColor = '', 1500);
+    return;
+  }
+  const url = getCurrentURL();
+  const msg = CONFIG.whatsappMessage(name, url);
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+/* ─── EXPORT ────────────────────────────── */
+function exportCSV() {
+  if (!allRsvpData.length) return alert('No data to export yet.');
+  const headers = ['Name', 'Attending', 'Guests', 'Meal Preference', 'Dietary', 'Event', 'Time'];
+  const rows = allRsvpData.map(r => [
+    r.name, r.attending ? 'Yes' : 'No',
+    r.attending ? (r.members || 1) : '',
+    r.mealPref || '', r.dietary || '',
+    r.event || '', r.time || ''
+  ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = CONFIG.exportFile;
+  a.click();
+}
+
+/* ─── UTIL ──────────────────────────────── */
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+</script>
+</body>
+</html>
